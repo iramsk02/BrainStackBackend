@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Second Brain App</title>
+    <script>
+        async function signup() {
+
+            const response = await fetch('/api/v1/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: "iramsabak", password: "#Ir@msabak02" })
+            });
+            const data = await response.json();
+            alert(data.message);
+        }
+
+        async function signin() {
+            const response = await fetch('/api/v1/signin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: "iramsabak", password: "#Ir@msabak02" })
+            });
+            const data = await response.json();
+
+            // console.log(title)
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("username", data.username)
+            alert(data.message);
+        }
+
+        async function addContent() {
+            alert("Adding content...");
+
+            const token = localStorage.getItem("token"); // Ensure token is correctly retrieved
+            const username = localStorage.getItem("username")
+
+            if (!token) {
+                alert("Token is missing! Please log in again.");
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/v1/content', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': token,
+
+                    },
+                    body: JSON.stringify({ link: "abc.com", title: "My Notes", type: "article", data: "This is my note content", tags: ["secondbrain", "notes"], username: username })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || "Failed to add content");
+                }
+
+                const data = await response.json();
+                alert(data.message);
+                // localStorage.removeItem("token");
+                // localStorage.removeItem("username");
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        async function getContent() {
+            const token = localStorage.getItem("token");
+            const username = localStorage.getItem("username");
+            
+
+            if (!token) {
+                alert("Token is missing! Please log in again.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v1/content?username=${username}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': token
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || "Failed to get content");
+                }
+
+                const data = await response.json();
+                const contentContainer = document.getElementById('content-container');
+                contentContainer.innerHTML = ''; // Clear previous content
+
+                data.content.forEach(item => {
+                    const contentElement = document.createElement('div');
+                    contentElement.innerHTML = `
+                        <h2>${item.title}</h2>
+                        <p>${item.data}</p>
+                        <button onclick=deleteContent('${item._id}')>Delete</button>
+                    `;
+                    contentContainer.appendChild(contentElement);
+                    }
+                );
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+                const contentContainer = document.getElementById('content-container');
+                contentContainer.innerHTML = ''; // Clear previous content
+
+            }
+        }
+        async function deleteContent(contentId="") {
+            const token = localStorage.getItem("token");
+            const username = localStorage.getItem("username");
+            
+
+            if (!token) {
+                alert("Token is missing! Please log in again.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v1/content?ContentId=${contentId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': token
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || "Failed to get content");
+                    // getContent();
+                }
+
+                const data = await response.json();
+                console.log(response)
+                console.log(data)
+                getContent();
+            } catch (error) {
+                getContent();
+
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+
+
+        
+        async function shareContent(contentId="67d26a4739b4a4157c33af65") {
+            const token = localStorage.getItem("token");
+            const username = localStorage.getItem("username");
+
+            if (!token) {
+                alert("Token is missing! Please log in again.");
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/v1/brain/share', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': token,
+                    },
+                    body: JSON.stringify({ contentId, username })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || "Failed to share content");
+                }
+
+                const data = await response.json();
+                alert(`Content shared successfully! Shareable link: ${data.shareableLink}`);
+                console.log(data.shareableLink)
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        async function accessSharedContent() {
+            const sharedLink = prompt("Enter the shareable link:");
+
+            if (!sharedLink) {
+                alert("Shareable link is required!");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v1/brain/${sharedLink}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || "Failed to access shared content");
+                }
+
+                const data = await response.json();
+                const contentContainer = document.getElementById('content-container');
+                contentContainer.innerHTML = ''; // Clear previous content
+
+                const contentElement = document.createElement('div');
+                contentElement.innerHTML = `
+                    <h2>${data.content.title}</h2>
+                    <p>${data.content.data}</p>
+                `;
+                contentContainer.appendChild(contentElement);
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <h1>Welcome to Second Brain</h1>
+    <button onclick="signup()">Sign Up</button>
+    <button onclick="signin()">Sign In</button>
+    <button onclick="addContent()">Add Content</button>
+    <button onclick="getContent()">Get Content</button>
+    <button onclick="shareContent()">Share Content</button>
+    <button onclick="accessSharedContent()">Access Shared Content</button>
+    <h2 id="content-container"></h2>
+    <!-- <button onclick="deleteContent()">delete Content</button> -->
+</body>
+
+</html>
